@@ -1,0 +1,31 @@
+{
+  "title": "Rain Bird Scheduler",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Rain Bird Scheduler",
+        "description": "Found {zone_count} Rain Bird zone(s): {zones}.\n\nOptional integrations to use:",
+        "data": {
+          "name": "Name",
+          "flume_daily_sensor": "Flume daily-total sensor (for GPM calibration)",
+          "rainsensor": "Rain sensor binary_sensor (skips run when wet)"
+        }
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Rain Bird Scheduler is already configured.",
+      "rainbird_not_configured": "No Rain Bird zones found. Set up the Rain Bird integration first, then add this scheduler."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Rain Bird Scheduler options",
+        "data": {
+          "flume_daily_sensor": "Flume daily-total sensor",
+          "rainsensor": "Rain sensor binary_sensor"
+        }
+      }
+    }
+  }
+}
