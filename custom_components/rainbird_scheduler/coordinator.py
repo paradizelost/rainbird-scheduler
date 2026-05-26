@@ -13,6 +13,7 @@ start_zone/full_cycle/test_cycle/stop_all lives in runner.py.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import asdict, dataclass, field
 from datetime import date, datetime, time, timedelta
@@ -172,6 +173,7 @@ class RainBirdSchedulerCoordinator(DataUpdateCoordinator[None]):
         self._unsub_scheduled_run = None
         self.zones: list[int] = []  # populated by _refresh_zones()
         self.zone_entity_map: dict[int, str] = {}  # zone -> switch.<id>
+        self._active_cycle: asyncio.Task | None = None
 
     # ------------------------------------------------------------------ setup
 
@@ -291,6 +293,27 @@ class RainBirdSchedulerCoordinator(DataUpdateCoordinator[None]):
 
     def next_eligible_date(self) -> date | None:
         return next_run_date(dt_util.now().date(), self.state.schedule_config(wet=False))
+
+    # ---------------------------------------------------------- cycle tracking
+
+    def set_active_cycle(self, task: asyncio.Task) -> None:
+        """Track the currently-running cycle task so stop_all can cancel it."""
+        self._active_cycle = task
+
+    def clear_active_cycle(self) -> None:
+        self._active_cycle = None
+
+    def active_cycle(self) -> asyncio.Task | None:
+        return self._active_cycle
+
+    # ------------------------------------------------------ activity-log lookup
+
+    def activity_log_entity_id(self) -> str | None:
+        """Resolve the activity-log sensor's entity_id via the entity registry."""
+        ent_reg = er.async_get(self.hass)
+        return ent_reg.async_get_entity_id(
+            "sensor", DOMAIN, f"{self.entry.entry_id}_activity_log"
+        )
 
     # ---------------------------------------------------------------- mutators
 

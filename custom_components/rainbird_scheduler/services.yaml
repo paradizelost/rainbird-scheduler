@@ -1,0 +1,47 @@
+start_zone:
+  name: Run a single zone
+  description: >-
+    Ad-hoc start of one zone with optional minutes override. Uses the zone's
+    stored minutes if omitted. Measures Flume gallons + GPM and updates the
+    per-zone calibration on completion.
+  fields:
+    zone:
+      name: Zone
+      description: Rain Bird zone number (matches the `zone` attribute of the rainbird switch).
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+          max: 22
+          step: 1
+    minutes:
+      name: Minutes (override)
+      description: Override the stored zone minutes. Omit to use the configured value.
+      required: false
+      example: 15
+      selector:
+        number:
+          min: 0
+          max: 60
+          step: 1
+          unit_of_measurement: min
+
+start_full_cycle:
+  name: Run full cycle
+  description: >-
+    Run every discovered zone for its configured minutes, repeating
+    `cycles_per_run` times. Same as the daily scheduled run when the verdict
+    is 'yes'.
+
+start_test_cycle:
+  name: Run test cycle (1 min/zone)
+  description: >-
+    Run every zone for 1 minute. Measures Flume flow on each zone and updates
+    the per-zone GPM helper — useful after head changes or anytime the
+    calibration looks off.
+
+stop_all:
+  name: Stop all
+  description: >-
+    Cancel any in-flight cycle and turn off every discovered Rain Bird zone.
