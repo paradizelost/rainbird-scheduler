@@ -20,6 +20,7 @@ from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
 from .coordinator import RainBirdSchedulerCoordinator
+from .frontend import async_register_frontend
 from .services import async_register_services
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,6 +45,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     async_register_services(hass)
+    await async_register_frontend(hass)
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
 
