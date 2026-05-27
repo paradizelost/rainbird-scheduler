@@ -1,7 +1,7 @@
 {
   "domain": "rainbird_scheduler",
   "name": "Rain Bird Scheduler",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "documentation": "https://git.hamik.net/claude-bot/rainbird-scheduler",
   "issue_tracker": "https://git.hamik.net/claude-bot/rainbird-scheduler/issues",
   "codeowners": ["@paradizelost"],

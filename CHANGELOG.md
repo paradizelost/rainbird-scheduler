@@ -7,6 +7,14 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.11] — 2026-05-27
+
+### Changed
+- **Reordered into a single ordered column:** header, status icons, water
+  usage, calendar, run/test/stop, zones, activity. Master Settings, Weekdays,
+  and the runtime/GPM editor toggle now sit in a config footer below activity.
+  (Single Sections column so the order is deterministic.)
+
 ## [0.1.10] — 2026-05-27
 
 ### Added
