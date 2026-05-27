@@ -7,6 +7,25 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.4] — 2026-05-27
+
+### Fixed
+- **Most entities silently missing from the dashboard** (no zone cards,
+  no weekday switches, no Skip Next toggle, no Every Nth Day, no Show
+  Durations toggle). Discovery was matching `entity_id.endsWith(role)`,
+  but HA generates entity IDs from the display name not the integration's
+  internal role — so `_skip_next` matcher missed `_skip_next_run` entity,
+  `_every_nth` missed `_every_nth_day`, `_zone_5_minutes` missed
+  `_south_yard_minutes`, etc.
+- Strategy now uses the entity registry (`hass.entities`) and matches by
+  `unique_id` instead, which IS role-based. Renaming the device no longer
+  breaks discovery either.
+
+### Closes
+- Task that was originally scoped for v0.2 (registry-based lookup) —
+  moved up because v0.1.3 surfaced how broken name-slug matching is in
+  practice.
+
 ## [0.1.3] — 2026-05-27
 
 ### Changed

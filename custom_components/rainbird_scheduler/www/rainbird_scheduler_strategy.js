@@ -19,39 +19,49 @@ class RainbirdSchedulerStrategy extends HTMLElement {
   static async generate(config, hass) {
     const states = hass.states;
 
-    // Find our entities by their slug. has_entity_name=True means HA generates
-    // entity_ids as `<domain>.<device_slug>_<role_slug>`, and `device_slug` is
-    // a slugify of the device name. Default name "Rain Bird Scheduler" → slug
-    // "rain_bird_scheduler" (underscores between words), but a user might
-    // rename it. Match liberally: any id containing "rain" + optional "_" +
-    // "bird_scheduler".
-    const isOurs = (id) => /rain_?bird_scheduler_/.test(id);
+    // Find our entities via the entity registry (hass.entities). Each entry
+    // has a stable `unique_id` formatted by the integration as
+    // `<config_entry_id>_<role>` — independent of the device name slug HA
+    // builds entity_ids from. This means a user renaming the device doesn't
+    // break discovery, and we don't have to guess at display-name slugs.
+    //
+    // Falls back to {} if hass.entities is unavailable (older HA versions);
+    // in that case the strategy will render mostly empty cards rather than
+    // throwing.
+    const allEntities = hass.entities || {};
+    const ourEntities = Object.values(allEntities).filter(
+      (e) => e.platform === "rainbird_scheduler"
+    );
 
-    const zoneNums = Object.keys(states)
-      .filter((id) => id.startsWith("number.") && isOurs(id) && id.endsWith("_minutes"))
-      .map((id) => {
-        const m = id.match(/_zone_(\d+)_minutes$/);
+    // Build a role → entity_id map from unique_ids. Role is whatever comes
+    // after the first `_` in unique_id, since config_entry_ids are 32-char
+    // hex strings with no underscores.
+    const byRole = {};
+    for (const e of ourEntities) {
+      if (!e.unique_id || !e.entity_id) continue;
+      const idx = e.unique_id.indexOf("_");
+      if (idx < 0) continue;
+      byRole[e.unique_id.slice(idx + 1)] = e.entity_id;
+    }
+
+    const idFor = (role) => byRole[role] || null;
+    const zoneEntity = (n, kind) => byRole[`zone_${n}_${kind}`] || null;
+
+    // Zones: roles look like `zone_N_minutes`, pull N out of every minutes role.
+    const zoneNums = Object.keys(byRole)
+      .map((role) => {
+        const m = role.match(/^zone_(\d+)_minutes$/);
         return m ? parseInt(m[1], 10) : null;
       })
       .filter((n) => n !== null)
       .sort((a, b) => a - b);
-
-    const idFor = (suffix) =>
-      Object.keys(states).find(
-        (id) => isOurs(id) && id.endsWith(`_${suffix}`)
-      );
-
-    const zoneEntity = (n, kind) =>
-      Object.keys(states).find(
-        (id) => isOurs(id) && id.endsWith(`_zone_${n}_${kind}`)
-      );
 
     const zoneName = (n) => {
       const eid = zoneEntity(n, "minutes");
       if (!eid) return `Zone ${n}`;
       const fn = states[eid]?.attributes?.friendly_name || "";
       // Strip the " Minutes" suffix our entity adds
-      return fn.replace(/\s+Minutes$/, "");
+      return fn.replace(/\s+Minutes$/, "") || `Zone ${n}`;
     };
 
     const verdictEntity = idFor("today_will_run");
