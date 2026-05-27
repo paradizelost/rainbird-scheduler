@@ -7,6 +7,23 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-05-27
+
+### Fixed
+- **Dashboard strategy now registers correctly.** `customElements.define`
+  throws on duplicate class registration, so the dashboard-level element
+  (`ll-strategy-dashboard-rainbird-scheduler`) was never registered after
+  the view-level one (`ll-strategy-rainbird-scheduler`) registered first.
+  Use a trivial subclass for the dashboard variant.
+
+### Documented
+- Manual Lovelace resource registration step in README — `add_extra_js_url`
+  serves the JS but doesn't auto-register custom elements; users must add
+  `/rainbird_scheduler_files/strategy.js` as a JavaScript-module resource
+  under Settings → Dashboards → Resources until v0.2 auto-registers it.
+
+## [0.1.0] — 2026-05-27
+
 ### Added
 - Initial HACS-compatible release of the integration.
 - Auto-discovery of Rain Bird zones from the loaded `rainbird` integration.

@@ -227,12 +227,17 @@ class RainbirdSchedulerStrategy extends HTMLElement {
   }
 }
 
+// `customElements.define` throws if you register the same class under two
+// names, so use a trivial subclass for each. Dashboard-level strategies
+// (root-of-config `strategy:`) look up `ll-strategy-dashboard-<type>`;
+// view-level strategies look up `ll-strategy-<type>`. We register both.
+class RainbirdSchedulerDashboardStrategy extends RainbirdSchedulerStrategy {}
+
 customElements.define(
   "ll-strategy-rainbird-scheduler",
   RainbirdSchedulerStrategy
 );
-// Also register the dashboard-level variant some HA versions prefer
 customElements.define(
   "ll-strategy-dashboard-rainbird-scheduler",
-  RainbirdSchedulerStrategy
+  RainbirdSchedulerDashboardStrategy
 );

@@ -68,14 +68,27 @@ All schedule shape is configured through entities once set up:
 
 ## Dashboard
 
-Settings → Dashboards → Add Dashboard → from strategy:
+The integration ships a Lovelace strategy that auto-generates a dashboard from your discovered zones using only built-in cards. Setting it up is two steps:
 
-```yaml
-strategy:
-  type: custom:rainbird-scheduler
-```
+**1. Register the strategy JS as a Lovelace resource** (one-time, manual until v0.2):
+- Settings → Dashboards → top-right ⋮ → **Resources**
+- **+ Add Resource**
+- URL: `/rainbird_scheduler_files/strategy.js`
+- Type: **JavaScript module**
 
-The strategy auto-generates a dashboard from your discovered zones using only built-in Lovelace cards. For a more polished version with mushroom + auto-entities, see `examples/dashboard-deluxe.yaml` *(coming soon)*.
+**2. Create the dashboard:**
+- Settings → Dashboards → **+ Add Dashboard** → "New dashboard from scratch" → title + icon → Create
+- Open the new dashboard → **pencil** (Edit) → ⋮ → **Raw configuration editor**
+- Replace the contents with:
+  ```yaml
+  strategy:
+    type: custom:rainbird-scheduler
+  ```
+- Save → close editor → hard-refresh (Ctrl+Shift+R)
+
+> **Why the manual resource step:** HA's `add_extra_js_url` API serves the JS file but doesn't always register custom Lovelace elements; the Resources mechanism does. Auto-registering resources from an integration uses an undocumented API — landing in v0.2.
+
+For a more polished version with mushroom + auto-entities, see `examples/dashboard-deluxe.yaml` *(coming soon)*.
 
 ## Services
 
