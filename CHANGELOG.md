@@ -7,6 +7,14 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.12] — 2026-05-27
+
+### Fixed
+- **CI hassfest failure** — declared `frontend` and `http` in manifest
+  `dependencies`. `frontend.py` imports `add_extra_js_url` (frontend) and
+  `StaticPathConfig` (http), which hassfest requires to be listed. Runtime was
+  unaffected since both components are always loaded by core.
+
 ## [0.1.11] — 2026-05-27
 
 ### Changed
