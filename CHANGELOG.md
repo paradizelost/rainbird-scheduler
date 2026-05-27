@@ -7,6 +7,12 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.17] — 2026-05-27
+
+### Changed
+- Moved the Run / Test / Stop buttons into the Status section, directly under
+  Water usage. The Zones section is now just the per-zone cards.
+
 ## [0.1.16] — 2026-05-27
 
 ### Added

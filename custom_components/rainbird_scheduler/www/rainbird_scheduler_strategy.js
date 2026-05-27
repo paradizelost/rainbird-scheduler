@@ -521,9 +521,9 @@ class RainbirdSchedulerStrategy extends HTMLElement {
     };
 
     const sections = [
-      section("Status", [headerCard, statusCard, tiles]),
+      section("Status", [headerCard, statusCard, tiles, actionsCard]),
       section("Calendar & Tomorrow", [calendarCard, decisionCard]),
-      section("Run & Zones", [actionsCard, ...zoneCards]),
+      section("Zones", [...zoneCards]),
       section("Activity", [activityCard]),
       section("Settings", [
         settingsCard,
