@@ -139,23 +139,36 @@ class RainbirdSchedulerStrategy extends HTMLElement {
         }
       : null;
 
-    // ---- Zone cards
+    // ---- Zone cards (compact: name + last-run + Run-now button only).
+    // Editable fields live in their own toggleable sections below so the
+    // daily-use view stays uncluttered.
     const zoneCards = zoneNums.map((n) => {
+      const lastRun = zoneEntity(n, "last_run");
       const minutes = zoneEntity(n, "minutes");
       const gpm = zoneEntity(n, "gpm");
-      const lastRun = zoneEntity(n, "last_run");
       const name = zoneName(n);
+      // Secondary text shows current runtime + GPM at a glance via templates
+      // so users can see settings without flipping the editor toggle.
+      const subtitle = [
+        minutes && `{{ states('${minutes}') | int(0) }} min`,
+        gpm && `{{ states('${gpm}') | float(0) }} gpm`,
+      ]
+        .filter(Boolean)
+        .join(" · ");
       return {
         type: "entities",
         title: name,
         show_header_toggle: false,
         entities: [
-          minutes && { entity: minutes, name: "Runtime" },
-          gpm && { entity: gpm, name: "Flow rate" },
+          {
+            type: "section",
+            label: subtitle ? `Configured: ${subtitle}` : "Configured",
+          },
           lastRun && { entity: lastRun, name: "Last run" },
           {
             type: "button",
             name: "Run now",
+            icon: "mdi:sprinkler",
             tap_action: {
               action: "call-service",
               service: "rainbird_scheduler.start_zone",
@@ -168,6 +181,65 @@ class RainbirdSchedulerStrategy extends HTMLElement {
         ].filter(Boolean),
       };
     });
+
+    // ---- Toggleable "Edit zone runtimes" card.
+    // Revealed when switch.<...>_show_durations is on. One row per zone
+    // with the minutes number entity; HA renders the number with inline
+    // +/- controls when the entity's mode is `box`.
+    const editDurationsCard =
+      showDurationsEntity && zoneNums.length
+        ? {
+            type: "conditional",
+            conditions: [{ entity: showDurationsEntity, state: "on" }],
+            card: {
+              type: "entities",
+              title: "Edit zone runtimes (minutes)",
+              show_header_toggle: false,
+              entities: zoneNums
+                .map((n) => {
+                  const eid = zoneEntity(n, "minutes");
+                  return eid ? { entity: eid, name: zoneName(n) } : null;
+                })
+                .filter(Boolean),
+            },
+          }
+        : null;
+
+    // ---- Toggleable "Edit GPM calibration" card.
+    const editGpmCard =
+      showDurationsEntity && zoneNums.length
+        ? {
+            type: "conditional",
+            conditions: [{ entity: showDurationsEntity, state: "on" }],
+            card: {
+              type: "entities",
+              title: "Edit zone flow calibration (GPM)",
+              show_header_toggle: false,
+              entities: zoneNums
+                .map((n) => {
+                  const eid = zoneEntity(n, "gpm");
+                  return eid ? { entity: eid, name: zoneName(n) } : null;
+                })
+                .filter(Boolean),
+            },
+          }
+        : null;
+
+    // ---- "Show editor" toggle chip. Always visible so users can flip into
+    // edit mode without diving into Settings.
+    const editorToggleCard = showDurationsEntity
+      ? {
+          type: "entities",
+          show_header_toggle: false,
+          entities: [
+            {
+              entity: showDurationsEntity,
+              name: "Show duration / GPM editors",
+              icon: "mdi:timer-cog-outline",
+            },
+          ],
+        }
+      : null;
 
     // ---- Action buttons
     const actionsCard = {
@@ -222,6 +294,9 @@ class RainbirdSchedulerStrategy extends HTMLElement {
             weekdaysCard,
             tiles,
             activityCard,
+            editorToggleCard,
+            editDurationsCard,
+            editGpmCard,
             ...zoneCards,
             actionsCard,
           ].filter(Boolean),

@@ -7,6 +7,17 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-05-27
+
+### Changed
+- **Dashboard now has dedicated editor sections** mirroring the v1.0 YAML
+  UX. Each zone card is compact (current settings shown as a subtitle,
+  last-run timestamp, and a Run-now button), and editing is exposed via a
+  "Show duration / GPM editors" toggle that reveals two full-width
+  `entities` cards listing every zone's minutes / GPM with inline +/-
+  controls. Going to Settings → Devices & Services to bump a value is no
+  longer necessary.
+
 ## [0.1.2] — 2026-05-27
 
 ### Fixed
