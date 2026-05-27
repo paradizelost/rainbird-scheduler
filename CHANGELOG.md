@@ -7,6 +7,15 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.14] — 2026-05-27
+
+### Changed
+- **Two-column layout** instead of one tall column. Read top-to-bottom down the
+  left (header, status icons, water usage, calendar, then settings / weekdays /
+  editors) and continue down the right (run/test/stop, zones, activity). The
+  split falls at run/test/stop; section titles ("Overview" / "Run & Zones") act
+  as the separator.
+
 ## [0.1.13] — 2026-05-27
 
 ### Fixed

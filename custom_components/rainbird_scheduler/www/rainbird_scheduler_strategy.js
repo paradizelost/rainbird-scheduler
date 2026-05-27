@@ -477,31 +477,32 @@ class RainbirdSchedulerStrategy extends HTMLElement {
       ],
     };
 
-    // Single ordered column (Sections layout with one section, so the order
-    // is deterministic — masonry would reflow by height and scatter the zone
-    // cards). Explicit requested order:
-    //   header, status icons, water usage, calendar, run/test/stop, zones,
-    //   activity.
-    // The config-ish cards that aren't in that list (Master Settings,
-    // Weekdays, and the runtime/GPM editor toggle + edit cards) live in a
-    // footer below activity.
-    const mainSection = {
+    // Two-column Sections layout: read top-to-bottom down the left column,
+    // then top-to-bottom down the right. The split falls at the run/test/stop
+    // controls — left is status + schedule + settings, right is the bulk
+    // actions + zones + activity. Each section's title acts as the separator.
+    // The config-ish cards not in the requested 7 (Master Settings, Weekdays,
+    // runtime/GPM editors) sit at the bottom of the left column.
+    const overviewSection = {
       type: "grid",
+      title: "Overview",
       cards: [
         headerCard,
         statusCard,
         tiles,
         calendarCard,
-        actionsCard,
-        ...zoneCards,
-        activityCard,
-        // --- config footer ---
         settingsCard,
         weekdaysCard,
         editorToggleCard,
         editDurationsCard,
         editGpmCard,
       ].filter(Boolean),
+    };
+
+    const runZonesSection = {
+      type: "grid",
+      title: "Run & Zones",
+      cards: [actionsCard, ...zoneCards, activityCard].filter(Boolean),
     };
 
     return {
@@ -512,8 +513,8 @@ class RainbirdSchedulerStrategy extends HTMLElement {
           path: "schedule",
           icon: "mdi:sprinkler-variant",
           type: "sections",
-          max_columns: 1,
-          sections: [mainSection],
+          max_columns: 2,
+          sections: [overviewSection, runZonesSection],
         },
       ],
     };
