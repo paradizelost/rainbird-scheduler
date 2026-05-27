@@ -79,12 +79,40 @@ class RainbirdSchedulerStrategy extends HTMLElement {
       .filter((n) => n !== null)
       .sort((a, b) => a - b);
 
+    // Map scheduler zone N -> the official Rain Bird valve switch (platform
+    // "rainbird") whose `zone` attribute is N. This gives us (a) the user's
+    // clean zone name ("South Boulevard" vs the scheduler entity's "Rain Bird
+    // Scheduler South Boulevard Minutes") and (b) a live on/off signal for the
+    // "running now" indicator. The scheduler depends on the rainbird
+    // integration, so these switches exist.
+    const zoneSwitch = {}; // N -> switch entity_id
+    const zoneSwitchName = {}; // N -> friendly name
+    const rbSource = registry.length
+      ? registry.filter((e) => e.platform === "rainbird")
+      : Object.values(hass.entities || {}).filter(
+          (e) => e.platform === "rainbird"
+        );
+    for (const e of rbSource) {
+      if (!e.entity_id || !e.entity_id.startsWith("switch.")) continue;
+      const st = states[e.entity_id];
+      const z = st && st.attributes ? st.attributes.zone : undefined;
+      if (z === undefined || z === null) continue;
+      zoneSwitch[z] = e.entity_id;
+      if (st.attributes.friendly_name) zoneSwitchName[z] = st.attributes.friendly_name;
+    }
+
     const zoneName = (n) => {
+      // Prefer the valve's clean friendly name; fall back to the scheduler
+      // entity name with the device prefix + " Minutes" suffix stripped.
+      if (zoneSwitchName[n]) return zoneSwitchName[n];
       const eid = zoneEntity(n, "minutes");
-      if (!eid) return `Zone ${n}`;
-      const fn = states[eid]?.attributes?.friendly_name || "";
-      // Strip the " Minutes" suffix our entity adds
-      return fn.replace(/\s+Minutes$/, "") || `Zone ${n}`;
+      const fn = eid ? states[eid]?.attributes?.friendly_name || "" : "";
+      return (
+        fn
+          .replace(/\s*Minutes$/i, "")
+          .replace(/^Rain\s?Bird Scheduler\s+/i, "")
+          .trim() || `Zone ${n}`
+      );
     };
 
     const verdictEntity = idFor("today_will_run");
@@ -239,33 +267,46 @@ class RainbirdSchedulerStrategy extends HTMLElement {
       const minutes = zoneEntity(n, "minutes");
       const gpm = zoneEntity(n, "gpm");
       const name = zoneName(n);
+      const sw = zoneSwitch[n]; // official Rain Bird valve switch, if found
       const subParts = [
         minutes && `{{ states('${minutes}') | int(0) }} min`,
         gpm && `{{ states('${gpm}') | float(0) }} gpm`,
       ].filter(Boolean);
-      const infoLines = [];
-      if (subParts.length) infoLines.push(`Configured: ${subParts.join(" · ")}`);
+      const idleLines = [];
+      if (subParts.length) idleLines.push(`Configured: ${subParts.join(" · ")}`);
       if (lastRun) {
         // as_timestamp(..., None) → None for unknown/unavailable, so the
         // conditional cleanly falls back to "never" instead of erroring.
-        infoLines.push(
+        idleLines.push(
           `Last run: {{ as_timestamp(states('${lastRun}'), None) | ` +
             `timestamp_custom('%b %-d, %-I:%M %p') ` +
             `if as_timestamp(states('${lastRun}'), None) else 'never' }}`
         );
       }
-      // One compact row per zone: the name + configured runtime/flow + last
-      // run on the left (markdown, so the values render as read-only text),
-      // and the Run-now button beside it on the same row (a `button` card in
-      // a horizontal-stack).
+      const idleBlock = idleLines.join("  \n");
+      // When the zone's valve is on, show a "running now" line (v1.0 style) in
+      // place of the idle info. The valve switch toggles only a few times per
+      // run, so this is not a high-frequency template.
+      let body = idleBlock;
+      if (sw) {
+        const runMin = minutes
+          ? ` · {{ states('${minutes}') | int(0) }} min`
+          : "";
+        body =
+          `{% if is_state('${sw}', 'on') %}` +
+          `<span style="color: var(--info-color)"><b>● Running now</b></span>${runMin}` +
+          ` · started {{ as_timestamp(states['${sw}'].last_changed) | timestamp_custom('%-I:%M %p') }}` +
+          `{% else %}${idleBlock}{% endif %}`;
+      }
+      // One compact row per zone: name + status/info on the left (markdown, so
+      // values render as read-only text and the running line can be styled),
+      // and the Run-now button beside it on the same row.
       return {
         type: "horizontal-stack",
         cards: [
           {
             type: "markdown",
-            content:
-              `### ${name}` +
-              (infoLines.length ? `\n\n${infoLines.join("  \n")}` : ""),
+            content: `### ${name}` + (body ? `\n\n${body}` : ""),
           },
           {
             type: "button",

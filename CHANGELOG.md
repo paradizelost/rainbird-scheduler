@@ -7,6 +7,20 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.9] — 2026-05-27
+
+### Added
+- **"Running now" status on zone cards, restored from v1.0.** When a zone's
+  Rain Bird valve is on, its card shows "● Running now · N min · started
+  HH:MM" in place of the configured/last-run text, keyed off the official
+  rainbird switch's live state.
+
+### Changed
+- **Zone cards now use the valve's clean name** (e.g. "South Boulevard")
+  instead of the scheduler entity's "Rain Bird Scheduler South Boulevard".
+  Each scheduler zone is mapped to its rainbird switch via the switch's `zone`
+  attribute, and that switch's friendly name is used as the zone title.
+
 ## [0.1.8] — 2026-05-27
 
 ### Changed
