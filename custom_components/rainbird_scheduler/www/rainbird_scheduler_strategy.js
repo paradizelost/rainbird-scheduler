@@ -19,9 +19,13 @@ class RainbirdSchedulerStrategy extends HTMLElement {
   static async generate(config, hass) {
     const states = hass.states;
 
-    // Find rainbird_scheduler entities by matching the integration's domain
-    // pattern in unique_id slugs: anything with rainbird_scheduler in id.
-    const isOurs = (id) => id.includes("rainbird_scheduler_");
+    // Find our entities by their slug. has_entity_name=True means HA generates
+    // entity_ids as `<domain>.<device_slug>_<role_slug>`, and `device_slug` is
+    // a slugify of the device name. Default name "Rain Bird Scheduler" → slug
+    // "rain_bird_scheduler" (underscores between words), but a user might
+    // rename it. Match liberally: any id containing "rain" + optional "_" +
+    // "bird_scheduler".
+    const isOurs = (id) => /rain_?bird_scheduler_/.test(id);
 
     const zoneNums = Object.keys(states)
       .filter((id) => id.startsWith("number.") && isOurs(id) && id.endsWith("_minutes"))

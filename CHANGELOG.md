@@ -7,6 +7,21 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-05-27
+
+### Fixed
+- **Dashboard showed all sensor values as "unknown"** because the strategy's
+  entity matcher looked for `rainbird_scheduler_` in entity IDs, but HA
+  slugifies the default device name "Rain Bird Scheduler" to
+  `rain_bird_scheduler` (with underscores between words). The matcher now
+  accepts both `rainbird_scheduler` and `rain_bird_scheduler` via regex.
+
+### Known limitations
+- Dashboard discovery still depends on the device name slug containing some
+  variant of "rainbird_scheduler". Renaming the device to something without
+  "rainbird" or "rain_bird" will break the strategy until v0.2 switches to
+  registry-based lookup.
+
 ## [0.1.1] — 2026-05-27
 
 ### Fixed
