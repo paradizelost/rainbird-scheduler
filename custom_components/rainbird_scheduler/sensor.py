@@ -58,6 +58,21 @@ class TodayWillRunSensor(RainBirdSchedulerEntity, SensorEntity):
     def native_value(self) -> str:
         return self.coordinator.current_verdict()
 
+    @property
+    def extra_state_attributes(self) -> dict[str, object]:
+        """Expose tomorrow's full gate breakdown so the dashboard can render
+        the decision matrix without re-deriving any of the logic."""
+        d = self.coordinator.decision_for()  # tomorrow
+        return {
+            "tomorrow_date": d["date"],
+            "tomorrow_verdict": d["verdict"],
+            "tomorrow_enabled": d["enabled"],
+            "tomorrow_in_window": d["in_window"],
+            "tomorrow_skip_next": d["skip_next"],
+            "tomorrow_wet": d["wet"],
+            "tomorrow_rain_delay_days": d["rain_delay_days"],
+        }
+
 
 class RunTotalMinutesSensor(RainBirdSchedulerEntity, SensorEntity):
     _attr_icon = "mdi:timer-sand"

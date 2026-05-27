@@ -30,11 +30,47 @@ from custom_components.rainbird_scheduler.const import (
 from custom_components.rainbird_scheduler.scheduler import (
     ScheduleConfig,
     compute_verdict,
+    decision_breakdown,
     is_eligible,
     next_fire_datetime,
     next_run_date,
     runs_in_next_30_days,
 )
+
+
+# ------------------------------------------------------- decision_breakdown
+
+
+class TestDecisionBreakdown:
+    """The breakdown must agree with compute_verdict and report each gate, so
+    the dashboard never re-derives the logic."""
+
+    def test_breakdown_yes(self):
+        cfg = ScheduleConfig(day_class=DAY_CLASS_EVEN, every_nth=1)
+        d = decision_breakdown(date(2026, 5, 2), cfg)  # even day
+        assert d["verdict"] == VERDICT_YES
+        assert d == {
+            "verdict": VERDICT_YES,
+            "enabled": True,
+            "in_window": True,
+            "skip_next": False,
+            "wet": False,
+            "rain_delay_days": 0,
+        }
+
+    def test_breakdown_out_of_window(self):
+        cfg = ScheduleConfig(day_class=DAY_CLASS_EVEN, every_nth=1)
+        d = decision_breakdown(date(2026, 5, 3), cfg)  # odd day
+        assert d["in_window"] is False
+        assert d["verdict"] == VERDICT_SKIP_WINDOW
+
+    def test_breakdown_matches_compute_verdict(self):
+        cfg = ScheduleConfig(
+            day_class=DAY_CLASS_EVEN, every_nth=1, skip_next=True
+        )
+        day = date(2026, 5, 2)
+        assert decision_breakdown(day, cfg)["verdict"] == compute_verdict(day, cfg)
+        assert decision_breakdown(day, cfg)["skip_next"] is True
 
 
 # ---------------------------------------------------------------- is_eligible

@@ -105,6 +105,26 @@ def compute_verdict(day: date, config: ScheduleConfig) -> str:
     return VERDICT_YES
 
 
+def decision_breakdown(day: date, config: ScheduleConfig) -> dict[str, object]:
+    """Per-gate breakdown for `day` plus the resulting verdict.
+
+    Centralizes ALL decision logic here (and is unit-tested), so dashboards can
+    render the result directly without re-deriving any day-class / eligibility
+    math in templates — which is exactly the source of past wrong-date bugs.
+
+    `in_window` is the day-class eligibility decision; the other gates mirror
+    the precedence in `compute_verdict`.
+    """
+    return {
+        "verdict": compute_verdict(day, config),
+        "enabled": config.enabled,
+        "in_window": is_eligible(day, config),
+        "skip_next": config.skip_next,
+        "wet": config.wet,
+        "rain_delay_days": config.rain_delay_days,
+    }
+
+
 def upcoming_runs(start: date, config: ScheduleConfig, horizon_days: int = 60) -> list[date]:
     """Return eligible dates (window-only — doesn't consider rain/delay/skip)
     within the next `horizon_days` from `start` (inclusive)."""

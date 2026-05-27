@@ -41,6 +41,7 @@ from .scheduler import (
     WEEKDAY_NAMES,
     ScheduleConfig,
     compute_verdict,
+    decision_breakdown,
     next_fire_datetime,
     next_run_date,
     runs_in_next_30_days,
@@ -270,6 +271,19 @@ class RainBirdSchedulerCoordinator(DataUpdateCoordinator[None]):
         target = when or dt_util.now().date()
         config = self.state.schedule_config(wet=self._rainsensor_wet())
         return compute_verdict(target, config)
+
+    def decision_for(self, when: date | None = None) -> dict[str, object]:
+        """Full per-gate decision breakdown for `when` (default: tomorrow).
+
+        Computed from current state with the same logic the scheduler uses to
+        fire, so dashboards render the integration's real decision rather than
+        re-deriving any date math. Rain/delay reflect the current snapshot (not
+        an overnight forecast); the run-time re-evaluation has the final say."""
+        target = when or (dt_util.now().date() + timedelta(days=1))
+        config = self.state.schedule_config(wet=self._rainsensor_wet())
+        data = decision_breakdown(target, config)
+        data["date"] = target.isoformat()
+        return data
 
     def total_minutes(self) -> int:
         """Sum of zone minutes × cycles_per_run."""

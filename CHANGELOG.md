@@ -7,6 +7,19 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.16] — 2026-05-27
+
+### Added
+- **"Tomorrow's decision" matrix restored from v1.0** — a gate table (schedule
+  enabled / day in window / skip-next / rain sensor / rain delay) plus the
+  resulting verdict for tomorrow. All values come from the integration's own
+  decision, newly exposed as `tomorrow_*` attributes on the verdict sensor (via
+  a pure, unit-tested `scheduler.decision_breakdown`). The dashboard only
+  formats those values — it never re-derives day-class/eligibility math, so it
+  can't pick a wrong date the way an in-template calculation could. The matrix
+  populates after the next HA restart (when the new attributes load); until then
+  it shows a short placeholder.
+
 ## [0.1.15] — 2026-05-27
 
 ### Changed

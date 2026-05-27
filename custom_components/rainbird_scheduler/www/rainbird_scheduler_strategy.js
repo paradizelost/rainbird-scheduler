@@ -305,6 +305,40 @@ class RainbirdSchedulerStrategy extends HTMLElement {
         }
       : null;
 
+    // ---- Tomorrow's decision matrix (restored from v1.0). Every value here
+    // comes from the integration's own decision (exposed as `tomorrow_*`
+    // attributes on the verdict sensor) — the dashboard only FORMATS booleans,
+    // it never re-derives day-class/eligibility math. That re-derivation is
+    // what produced wrong dates before, so it stays out of the template.
+    const decisionCard = verdictEntity
+      ? {
+          type: "markdown",
+          title: "Tomorrow's decision",
+          content: [
+            `{% set v = state_attr('${verdictEntity}', 'tomorrow_verdict') %}`,
+            `{% set dt = state_attr('${verdictEntity}', 'tomorrow_date') %}`,
+            `{% set en = state_attr('${verdictEntity}', 'tomorrow_enabled') %}`,
+            `{% set win = state_attr('${verdictEntity}', 'tomorrow_in_window') %}`,
+            `{% set skip = state_attr('${verdictEntity}', 'tomorrow_skip_next') %}`,
+            `{% set wet = state_attr('${verdictEntity}', 'tomorrow_wet') %}`,
+            `{% set rd = state_attr('${verdictEntity}', 'tomorrow_rain_delay_days') | int(0) %}`,
+            `{% if v is none %}_Decision detail appears after the next Home Assistant restart._`,
+            `{% else %}### {{ strptime(dt, '%Y-%m-%d').strftime('%A, %b %-d') if dt else 'Tomorrow' }} — *{{ v }}*`,
+            ``,
+            `| Gate | Want | Tomorrow | OK |`,
+            `|---|---|---|:--:|`,
+            `| Schedule enabled | on | {{ 'on' if en else 'off' }} | {{ '✅' if en else '❌' }} |`,
+            `| Day in window | yes | {{ 'yes' if win else 'no' }} | {{ '✅' if win else '❌' }} |`,
+            `| Skip-next | off | {{ 'on' if skip else 'off' }} | {{ '✅' if not skip else '❌' }} |`,
+            `| Rain sensor | dry | {{ 'wet' if wet else 'dry' }} | {{ '✅' if not wet else '❌' }} |`,
+            `| Rain delay | 0 | {{ rd }}d | {{ '✅' if rd == 0 else '❌' }} |`,
+            ``,
+            `_Rain & delay are current snapshots, not an overnight forecast — the morning re-check decides for real._`,
+            `{% endif %}`,
+          ].join("\n"),
+        }
+      : null;
+
     // ---- Zone cards (compact: name + configured runtime/flow + last-run as
     // read-only text + a Run-now button). The settings line and last-run go in
     // a `markdown` card on purpose:
@@ -488,7 +522,7 @@ class RainbirdSchedulerStrategy extends HTMLElement {
 
     const sections = [
       section("Status", [headerCard, statusCard, tiles]),
-      section("Calendar", [calendarCard]),
+      section("Calendar & Tomorrow", [calendarCard, decisionCard]),
       section("Run & Zones", [actionsCard, ...zoneCards]),
       section("Activity", [activityCard]),
       section("Settings", [
