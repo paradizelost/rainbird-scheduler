@@ -139,16 +139,22 @@ class RainbirdSchedulerStrategy extends HTMLElement {
       entities: settingsRows,
     };
 
-    // Weekdays card — only relevant when day class = "day of week"; we show it
-    // unconditionally for simplicity but mark it with a hint.
-    const weekdaysCard = weekdayRows.length
-      ? {
-          type: "entities",
-          title: 'Weekdays (used when day class = "day of week")',
-          show_header_toggle: false,
-          entities: weekdayRows,
-        }
-      : null;
+    // Weekdays card — only relevant when day class = "day of week", so hide
+    // it for even/odd/all via a conditional keyed on the day_class select.
+    // (day_class options are: even, odd, all, day of week.)
+    const weekdaysCard =
+      weekdayRows.length && dayClassEntity
+        ? {
+            type: "conditional",
+            conditions: [{ entity: dayClassEntity, state: "day of week" }],
+            card: {
+              type: "entities",
+              title: "Weekdays",
+              show_header_toggle: false,
+              entities: weekdayRows,
+            },
+          }
+        : null;
 
     // ---- Gallons tiles
     const tiles = {
@@ -172,39 +178,82 @@ class RainbirdSchedulerStrategy extends HTMLElement {
         }
       : null;
 
-    // ---- Zone cards (compact: name + last-run + Run-now button only).
-    // Editable fields live in their own toggleable sections below so the
-    // daily-use view stays uncluttered.
+    // ---- Schedule calendar (markdown month grid, ported from the v1.0 YAML
+    // dashboard). Highlights upcoming run days with 💧 and today as [n].
+    // Driven off the integration's own `upcoming_runs` sensor `dates`
+    // attribute (a list of YYYY-MM-DD strings) rather than re-deriving the
+    // odd/even/day-of-week math, so it always matches what the scheduler will
+    // actually do. Hand-rolled HTML table because the built-in `calendar` card
+    // hangs on some setups. now() makes this re-render ~once/minute, which is
+    // fine — it's not a high-frequency entity template.
+    const calendarCard = upcomingEntity
+      ? {
+          type: "markdown",
+          title: "Schedule Calendar",
+          content: [
+            `{% set today = now() %}`,
+            `{% set first = today.replace(day=1) %}`,
+            `{% set first_col = (first.weekday() + 1) % 7 %}`,
+            `{% set last_day = (first + timedelta(days=32)).replace(day=1) - timedelta(days=1) %}`,
+            `{% set dim = last_day.day %}`,
+            `{% set runs = state_attr('${upcomingEntity}', 'dates') or [] %}`,
+            `### {{ today.strftime('%B %Y') }} · upcoming runs`,
+            ``,
+            `<table style="width:100%;text-align:center;border-collapse:separate;border-spacing:6px 6px;font-size:14px;table-layout:fixed">`,
+            `<tr><th style="opacity:0.6">S</th><th style="opacity:0.6">M</th><th style="opacity:0.6">T</th><th style="opacity:0.6">W</th><th style="opacity:0.6">T</th><th style="opacity:0.6">F</th><th style="opacity:0.6">S</th></tr>`,
+            `<tr>`,
+            `{%- for _ in range(first_col) %}<td></td>{%- endfor %}`,
+            `{%- for d in range(1, dim + 1) -%}`,
+            `{%- set daystr = '%04d-%02d-%02d' | format(first.year, first.month, d) -%}`,
+            `{%- set is_run = daystr in runs -%}`,
+            `{%- set is_today = d == today.day -%}`,
+            `{%- if is_run and is_today -%}<td><strong>[{{ d }}]</strong>💧</td>`,
+            `{%- elif is_run -%}<td>{{ d }}💧</td>`,
+            `{%- elif is_today -%}<td><strong>[{{ d }}]</strong></td>`,
+            `{%- else -%}<td>{{ d }}</td>{%- endif -%}`,
+            `{%- set col = (first_col + d) % 7 -%}`,
+            `{%- if col == 0 and d != dim %}</tr><tr>{%- endif -%}`,
+            `{%- endfor %}`,
+            `{%- set used = first_col + dim -%}`,
+            `{%- set pad = (7 - (used % 7)) % 7 -%}`,
+            `{%- for _ in range(pad) %}<td></td>{%- endfor %}`,
+            `</tr>`,
+            `</table>`,
+            ``,
+            `**Next:** {{ strptime(states('${upcomingEntity}'), '%Y-%m-%d').strftime('%a, %b %-d') if states('${upcomingEntity}') not in ['unknown', 'unavailable', 'none'] else '—' }}`,
+          ].join("\n"),
+        }
+      : null;
+
+    // ---- Zone cards (compact: name + configured runtime/flow + last-run as
+    // read-only text + a Run-now button). The settings line and last-run go in
+    // a `markdown` card on purpose:
+    //   - `last_run` is a `datetime` entity; in an `entities` card it renders
+    //     as an editable date/time *picker*, which we don't want for history.
+    //   - templated text won't evaluate in an `entities`-card `section` label.
+    // markdown handles both. These values only change on edit / run completion,
+    // so this is not a high-frequency template card.
+    // Editable runtime/GPM fields live in their own toggleable sections below.
     const zoneCards = zoneNums.map((n) => {
       const lastRun = zoneEntity(n, "last_run");
       const minutes = zoneEntity(n, "minutes");
       const gpm = zoneEntity(n, "gpm");
       const name = zoneName(n);
-      // Current runtime + GPM at a glance. These are templated, so they must
-      // render in a `markdown` card — an `entities`-card `section` label is
-      // plain text and does NOT evaluate Jinja (it would show the raw {{ }}).
-      // minutes/gpm only change on user edit, so this isn't a high-frequency
-      // template card.
       const subParts = [
         minutes && `{{ states('${minutes}') | int(0) }} min`,
         gpm && `{{ states('${gpm}') | float(0) }} gpm`,
       ].filter(Boolean);
-      const rows = [
-        lastRun && { entity: lastRun, name: "Last run" },
-        {
-          type: "button",
-          name: "Run now",
-          icon: "mdi:sprinkler",
-          tap_action: {
-            action: "call-service",
-            service: "rainbird_scheduler.start_zone",
-            service_data: { zone: n },
-            confirmation: {
-              text: `Run ${name} for its configured duration?`,
-            },
-          },
-        },
-      ].filter(Boolean);
+      const infoLines = [];
+      if (subParts.length) infoLines.push(`Configured: ${subParts.join(" · ")}`);
+      if (lastRun) {
+        // as_timestamp(..., None) → None for unknown/unavailable, so the
+        // conditional cleanly falls back to "never" instead of erroring.
+        infoLines.push(
+          `Last run: {{ as_timestamp(states('${lastRun}'), None) | ` +
+            `timestamp_custom('%b %-d, %-I:%M %p') ` +
+            `if as_timestamp(states('${lastRun}'), None) else 'never' }}`
+        );
+      }
       return {
         type: "vertical-stack",
         cards: [
@@ -212,9 +261,27 @@ class RainbirdSchedulerStrategy extends HTMLElement {
             type: "markdown",
             content:
               `### ${name}` +
-              (subParts.length ? `\nConfigured: ${subParts.join(" · ")}` : ""),
+              (infoLines.length ? `\n\n${infoLines.join("  \n")}` : ""),
           },
-          { type: "entities", show_header_toggle: false, entities: rows },
+          {
+            type: "entities",
+            show_header_toggle: false,
+            entities: [
+              {
+                type: "button",
+                name: "Run now",
+                icon: "mdi:sprinkler",
+                tap_action: {
+                  action: "call-service",
+                  service: "rainbird_scheduler.start_zone",
+                  service_data: { zone: n },
+                  confirmation: {
+                    text: `Run ${name} for its configured duration?`,
+                  },
+                },
+              },
+            ],
+          },
         ],
       };
     });
@@ -330,6 +397,7 @@ class RainbirdSchedulerStrategy extends HTMLElement {
             settingsCard,
             weekdaysCard,
             tiles,
+            calendarCard,
             activityCard,
             editorToggleCard,
             editDurationsCard,

@@ -7,6 +7,24 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.6] — 2026-05-27
+
+### Added
+- **Schedule Calendar** restored from the v1.0 YAML dashboard — a markdown
+  month grid that marks upcoming run days with 💧 and today as `[n]`. Driven
+  off the `upcoming_runs` sensor's `dates` attribute, so it reflects the
+  scheduler's actual plan rather than re-derived date math. Hand-rolled HTML
+  table because the built-in `calendar` card misbehaves on some setups.
+
+### Changed
+- **Weekday list is hidden unless Day Class = "day of week"** — wrapped in a
+  `conditional` keyed on the day_class select, so even/odd/all modes no longer
+  show an irrelevant weekday card.
+- **Per-zone "Last run" now renders as read-only text** instead of an editable
+  date/time picker. `last_run` is a `datetime` entity, which an `entities` card
+  renders as an editable control; moved it into the zone's markdown card next
+  to the configured runtime/flow.
+
 ## [0.1.5] — 2026-05-27
 
 ### Fixed
