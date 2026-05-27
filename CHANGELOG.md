@@ -7,6 +7,30 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.5] — 2026-05-27
+
+### Fixed
+- **Dashboard rendered nearly empty** — header showed "unknown", Master
+  Settings and Water usage cards were empty, and every zone card, the
+  weekday list, the activity log, and the editor toggles were missing.
+  v0.1.4 switched discovery to `unique_id` matching but read it from
+  `hass.entities`, the client-side *display* registry, which carries
+  `entity_id`/`platform`/`device_id` but **not** `unique_id`. Every entity
+  was skipped, so no cards were populated.
+- Strategy now fetches the full entity registry over the WebSocket
+  (`config/entity_registry/list`), which does include `unique_id`, and keys
+  role → entity_id off that. Falls back to entity_id matching only if the WS
+  call fails (older HA / restricted user).
+- **Zone-card "Configured: N min · M gpm" subtitle showed raw `{{ }}`
+  template text.** It lived in an `entities`-card `section` label, which is
+  plain text; moved it into a `markdown` card so the Jinja evaluates.
+- **Frontend resource re-registered on every reload** — the idempotency
+  guard called `getattr` on a dict (always falsy), so a reload hit
+  `async_register_static_paths` twice. Uses a dict key now.
+- `customElements.define` is now idempotent, so loading the strategy module
+  more than once (e.g. a leftover manual Lovelace resource alongside the
+  integration's auto-injected copy) no longer throws.
+
 ## [0.1.4] — 2026-05-27
 
 ### Fixed

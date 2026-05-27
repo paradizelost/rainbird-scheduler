@@ -25,7 +25,8 @@ async def async_register_frontend(hass: HomeAssistant) -> None:
     Idempotent — safe to call from each setup_entry. Skips re-registration
     if the static path is already in place.
     """
-    if getattr(hass.data.setdefault(DOMAIN, {}), "_frontend_registered", False):
+    data = hass.data.setdefault(DOMAIN, {})
+    if data.get("_frontend_registered"):
         return
 
     await hass.http.async_register_static_paths(
@@ -40,5 +41,5 @@ async def async_register_frontend(hass: HomeAssistant) -> None:
     # Tell HA to load this URL as an extra JS module on every Lovelace render
     add_extra_js_url(hass, STRATEGY_URL_PATH)
 
-    hass.data[DOMAIN]["_frontend_registered"] = True
+    data["_frontend_registered"] = True
     _LOGGER.info("Rain Bird Scheduler strategy JS registered at %s", STRATEGY_URL_PATH)

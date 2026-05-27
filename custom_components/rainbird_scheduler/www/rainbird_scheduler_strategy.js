@@ -19,29 +19,52 @@ class RainbirdSchedulerStrategy extends HTMLElement {
   static async generate(config, hass) {
     const states = hass.states;
 
-    // Find our entities via the entity registry (hass.entities). Each entry
-    // has a stable `unique_id` formatted by the integration as
-    // `<config_entry_id>_<role>` — independent of the device name slug HA
-    // builds entity_ids from. This means a user renaming the device doesn't
-    // break discovery, and we don't have to guess at display-name slugs.
+    // Discover our entities via the entity registry, keyed by `unique_id`.
+    // unique_id is integration-controlled (`<config_entry_id>_<role>`) and is
+    // stable across device/entity renames — exactly what we want to key cards
+    // off, instead of guessing display-name slugs.
     //
-    // Falls back to {} if hass.entities is unavailable (older HA versions);
-    // in that case the strategy will render mostly empty cards rather than
-    // throwing.
-    const allEntities = hass.entities || {};
-    const ourEntities = Object.values(allEntities).filter(
-      (e) => e.platform === "rainbird_scheduler"
-    );
+    // IMPORTANT: `hass.entities` (the client-side *display* registry) does NOT
+    // carry `unique_id` — only entity_id/platform/device_id/area_id/name/etc.
+    // The full registry (with unique_id) only comes over the WebSocket, so we
+    // fetch it here. `generate` is async, so the await is fine.
+    let registry = [];
+    try {
+      registry = await hass.callWS({ type: "config/entity_registry/list" });
+    } catch (err) {
+      // Older HA or a restricted user: fall back to the display registry
+      // below. Without unique_id we can only best-effort match by entity_id,
+      // which breaks under custom entity names — but it beats a blank board.
+      console.warn(
+        "rainbird-scheduler strategy: config/entity_registry/list failed; " +
+          "falling back to entity_id matching",
+        err
+      );
+    }
 
-    // Build a role → entity_id map from unique_ids. Role is whatever comes
-    // after the first `_` in unique_id, since config_entry_ids are 32-char
-    // hex strings with no underscores.
+    // Build a role → entity_id map. Role is whatever follows the first `_` in
+    // unique_id, since config_entry_ids are ULIDs/hex with no underscores.
     const byRole = {};
-    for (const e of ourEntities) {
-      if (!e.unique_id || !e.entity_id) continue;
-      const idx = e.unique_id.indexOf("_");
-      if (idx < 0) continue;
-      byRole[e.unique_id.slice(idx + 1)] = e.entity_id;
+    if (registry.length) {
+      for (const e of registry) {
+        if (e.platform !== "rainbird_scheduler") continue;
+        if (!e.unique_id || !e.entity_id) continue;
+        const idx = e.unique_id.indexOf("_");
+        if (idx < 0) continue;
+        byRole[e.unique_id.slice(idx + 1)] = e.entity_id;
+      }
+    } else {
+      // Degraded fallback: derive a pseudo-role from the entity_id suffix.
+      // Only matches installs that kept default entity names; custom-named
+      // zones won't be found, but core cards still populate.
+      const display = Object.values(hass.entities || {}).filter(
+        (e) => e.platform === "rainbird_scheduler"
+      );
+      for (const e of display) {
+        if (!e.entity_id) continue;
+        const m = e.entity_id.match(/^[^.]+\.rain_?bird_scheduler_(.+)$/);
+        if (m) byRole[m[1]] = e.entity_id;
+      }
     }
 
     const idFor = (role) => byRole[role] || null;
@@ -157,38 +180,42 @@ class RainbirdSchedulerStrategy extends HTMLElement {
       const minutes = zoneEntity(n, "minutes");
       const gpm = zoneEntity(n, "gpm");
       const name = zoneName(n);
-      // Secondary text shows current runtime + GPM at a glance via templates
-      // so users can see settings without flipping the editor toggle.
-      const subtitle = [
+      // Current runtime + GPM at a glance. These are templated, so they must
+      // render in a `markdown` card — an `entities`-card `section` label is
+      // plain text and does NOT evaluate Jinja (it would show the raw {{ }}).
+      // minutes/gpm only change on user edit, so this isn't a high-frequency
+      // template card.
+      const subParts = [
         minutes && `{{ states('${minutes}') | int(0) }} min`,
         gpm && `{{ states('${gpm}') | float(0) }} gpm`,
-      ]
-        .filter(Boolean)
-        .join(" · ");
-      return {
-        type: "entities",
-        title: name,
-        show_header_toggle: false,
-        entities: [
-          {
-            type: "section",
-            label: subtitle ? `Configured: ${subtitle}` : "Configured",
-          },
-          lastRun && { entity: lastRun, name: "Last run" },
-          {
-            type: "button",
-            name: "Run now",
-            icon: "mdi:sprinkler",
-            tap_action: {
-              action: "call-service",
-              service: "rainbird_scheduler.start_zone",
-              service_data: { zone: n },
-              confirmation: {
-                text: `Run ${name} for its configured duration?`,
-              },
+      ].filter(Boolean);
+      const rows = [
+        lastRun && { entity: lastRun, name: "Last run" },
+        {
+          type: "button",
+          name: "Run now",
+          icon: "mdi:sprinkler",
+          tap_action: {
+            action: "call-service",
+            service: "rainbird_scheduler.start_zone",
+            service_data: { zone: n },
+            confirmation: {
+              text: `Run ${name} for its configured duration?`,
             },
           },
-        ].filter(Boolean),
+        },
+      ].filter(Boolean);
+      return {
+        type: "vertical-stack",
+        cards: [
+          {
+            type: "markdown",
+            content:
+              `### ${name}` +
+              (subParts.length ? `\nConfigured: ${subParts.join(" · ")}` : ""),
+          },
+          { type: "entities", show_header_toggle: false, entities: rows },
+        ],
       };
     });
 
@@ -322,11 +349,15 @@ class RainbirdSchedulerStrategy extends HTMLElement {
 // view-level strategies look up `ll-strategy-<type>`. We register both.
 class RainbirdSchedulerDashboardStrategy extends RainbirdSchedulerStrategy {}
 
-customElements.define(
-  "ll-strategy-rainbird-scheduler",
-  RainbirdSchedulerStrategy
-);
-customElements.define(
+// Idempotent define — this module can be loaded more than once (e.g. via
+// add_extra_js_url *and* a leftover manual Lovelace resource), and a second
+// `customElements.define` of an existing name throws, which would abort the
+// rest of the module.
+const defineOnce = (name, cls) => {
+  if (!customElements.get(name)) customElements.define(name, cls);
+};
+defineOnce("ll-strategy-rainbird-scheduler", RainbirdSchedulerStrategy);
+defineOnce(
   "ll-strategy-dashboard-rainbird-scheduler",
   RainbirdSchedulerDashboardStrategy
 );
