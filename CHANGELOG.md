@@ -7,6 +7,14 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.7] — 2026-05-27
+
+### Changed
+- **Per-zone Run-now button now sits on the same row** as the zone's
+  configured runtime/flow and last-run text, instead of on a separate row
+  beneath it. Each zone is now a `horizontal-stack` of its info (markdown) +
+  the Run button.
+
 ## [0.1.6] — 2026-05-27
 
 ### Added

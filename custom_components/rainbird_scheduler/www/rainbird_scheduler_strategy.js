@@ -254,8 +254,12 @@ class RainbirdSchedulerStrategy extends HTMLElement {
             `if as_timestamp(states('${lastRun}'), None) else 'never' }}`
         );
       }
+      // One compact row per zone: the name + configured runtime/flow + last
+      // run on the left (markdown, so the values render as read-only text),
+      // and the Run-now button beside it on the same row (a `button` card in
+      // a horizontal-stack).
       return {
-        type: "vertical-stack",
+        type: "horizontal-stack",
         cards: [
           {
             type: "markdown",
@@ -264,23 +268,18 @@ class RainbirdSchedulerStrategy extends HTMLElement {
               (infoLines.length ? `\n\n${infoLines.join("  \n")}` : ""),
           },
           {
-            type: "entities",
-            show_header_toggle: false,
-            entities: [
-              {
-                type: "button",
-                name: "Run now",
-                icon: "mdi:sprinkler",
-                tap_action: {
-                  action: "call-service",
-                  service: "rainbird_scheduler.start_zone",
-                  service_data: { zone: n },
-                  confirmation: {
-                    text: `Run ${name} for its configured duration?`,
-                  },
-                },
+            type: "button",
+            name: "Run now",
+            icon: "mdi:sprinkler",
+            show_state: false,
+            tap_action: {
+              action: "call-service",
+              service: "rainbird_scheduler.start_zone",
+              service_data: { zone: n },
+              confirmation: {
+                text: `Run ${name} for its configured duration?`,
               },
-            ],
+            },
           },
         ],
       };
