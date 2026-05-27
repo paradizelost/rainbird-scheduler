@@ -384,6 +384,35 @@ class RainbirdSchedulerStrategy extends HTMLElement {
       ],
     };
 
+    // Use the Sections view layout instead of masonry. Masonry distributes
+    // cards across columns by height, which scattered the per-zone cards into
+    // both columns. Sections keep grouped areas together and in order:
+    //   - Overview: status, settings, calendar, water usage, activity.
+    //   - Zones: the bulk actions first (Test/Full/Stop), the runtime/GPM
+    //     editors, then every zone card grouped as one block.
+    const overviewSection = {
+      type: "grid",
+      cards: [
+        headerCard,
+        settingsCard,
+        weekdaysCard,
+        calendarCard,
+        tiles,
+        activityCard,
+      ].filter(Boolean),
+    };
+
+    const zonesSection = {
+      type: "grid",
+      cards: [
+        actionsCard,
+        editorToggleCard,
+        editDurationsCard,
+        editGpmCard,
+        ...zoneCards,
+      ].filter(Boolean),
+    };
+
     return {
       title: "Rainbird",
       views: [
@@ -391,19 +420,9 @@ class RainbirdSchedulerStrategy extends HTMLElement {
           title: "Schedule",
           path: "schedule",
           icon: "mdi:sprinkler-variant",
-          cards: [
-            headerCard,
-            settingsCard,
-            weekdaysCard,
-            tiles,
-            calendarCard,
-            activityCard,
-            editorToggleCard,
-            editDurationsCard,
-            editGpmCard,
-            ...zoneCards,
-            actionsCard,
-          ].filter(Boolean),
+          type: "sections",
+          max_columns: 2,
+          sections: [overviewSection, zonesSection],
         },
       ],
     };

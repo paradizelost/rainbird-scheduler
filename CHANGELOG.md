@@ -7,6 +7,16 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.8] — 2026-05-27
+
+### Changed
+- **Switched the dashboard to the Sections layout.** Masonry was distributing
+  cards by height and scattering the per-zone cards across both columns.
+  Sections keeps grouped areas together and ordered: an Overview section
+  (status, settings, calendar, water usage, activity) and a Zones section with
+  the bulk actions (Test / Full Cycle / Stop) first, then the runtime/GPM
+  editors, then all zone cards as one block.
+
 ## [0.1.7] — 2026-05-27
 
 ### Changed
