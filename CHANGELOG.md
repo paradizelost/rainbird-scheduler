@@ -7,6 +7,17 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.13] — 2026-05-27
+
+### Fixed
+- **CI (hassfest):** sorted manifest keys (domain, name, then alphabetical).
+- **CI (unit tests):** added `tests/conftest.py` that stubs the package
+  namespace so the pure scheduler tests import `const`/`scheduler` without
+  running the HA-importing `__init__.py` — no Home Assistant install needed in
+  CI.
+- **CI (HACS):** skip the `brands` and `topics` checks, which are required only
+  for default-store listing and don't apply to a custom-repo install.
+
 ## [0.1.12] — 2026-05-27
 
 ### Fixed

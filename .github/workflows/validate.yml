@@ -22,6 +22,12 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
+          # `brands` and `topics` are required only for listing in the default
+          # HACS store. This is installed as a custom repository, so they don't
+          # apply — skip them. (To pursue default-store listing later: add
+          # GitHub repo topics and register the domain in home-assistant/brands,
+          # then drop this ignore.)
+          ignore: brands topics
 
   tests:
     name: Scheduler unit tests
