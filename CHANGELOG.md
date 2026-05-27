@@ -7,6 +7,15 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.15] — 2026-05-27
+
+### Changed
+- **Grouped the dashboard into type-based sections** — Status, Calendar, Run &
+  Zones, Activity, Settings. Each section is atomic, so a given kind of card
+  (e.g. the zones) is never split across columns. The Sections layout tiles
+  these grouped blocks dynamically (up to 3 columns, collapsing to one on
+  narrow screens).
+
 ## [0.1.14] — 2026-05-27
 
 ### Changed

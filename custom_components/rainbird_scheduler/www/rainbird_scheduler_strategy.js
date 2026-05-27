@@ -477,33 +477,28 @@ class RainbirdSchedulerStrategy extends HTMLElement {
       ],
     };
 
-    // Two-column Sections layout: read top-to-bottom down the left column,
-    // then top-to-bottom down the right. The split falls at the run/test/stop
-    // controls — left is status + schedule + settings, right is the bulk
-    // actions + zones + activity. Each section's title acts as the separator.
-    // The config-ish cards not in the requested 7 (Master Settings, Weekdays,
-    // runtime/GPM editors) sit at the bottom of the left column.
-    const overviewSection = {
-      type: "grid",
-      title: "Overview",
-      cards: [
-        headerCard,
-        statusCard,
-        tiles,
-        calendarCard,
+    // Group cards into type-based sections. Each section is atomic — the
+    // Sections layout never splits one across columns — so a given kind of
+    // card (e.g. the zones) always stays together, and HA tiles the grouped
+    // blocks dynamically (collapsing to one column on narrow screens).
+    const section = (title, cards) => {
+      const filtered = cards.filter(Boolean);
+      return filtered.length ? { type: "grid", title, cards: filtered } : null;
+    };
+
+    const sections = [
+      section("Status", [headerCard, statusCard, tiles]),
+      section("Calendar", [calendarCard]),
+      section("Run & Zones", [actionsCard, ...zoneCards]),
+      section("Activity", [activityCard]),
+      section("Settings", [
         settingsCard,
         weekdaysCard,
         editorToggleCard,
         editDurationsCard,
         editGpmCard,
-      ].filter(Boolean),
-    };
-
-    const runZonesSection = {
-      type: "grid",
-      title: "Run & Zones",
-      cards: [actionsCard, ...zoneCards, activityCard].filter(Boolean),
-    };
+      ]),
+    ].filter(Boolean);
 
     return {
       title: "Rainbird",
@@ -513,8 +508,8 @@ class RainbirdSchedulerStrategy extends HTMLElement {
           path: "schedule",
           icon: "mdi:sprinkler-variant",
           type: "sections",
-          max_columns: 2,
-          sections: [overviewSection, runZonesSection],
+          max_columns: 3,
+          sections,
         },
       ],
     };
