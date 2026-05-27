@@ -101,6 +101,15 @@ class RainbirdSchedulerStrategy extends HTMLElement {
       if (st.attributes.friendly_name) zoneSwitchName[z] = st.attributes.friendly_name;
     }
 
+    // Rain sensor + controller rain-delay also come from the rainbird
+    // integration (not the scheduler), used by the status strip below.
+    const rbIds = rbSource.map((e) => e.entity_id).filter(Boolean);
+    const rainSensorEntity =
+      rbIds.find((eid) => eid.startsWith("binary_sensor.")) || null;
+    const controllerDelayEntity =
+      rbIds.find((eid) => eid.startsWith("sensor.") && /delay/i.test(eid)) ||
+      null;
+
     const zoneName = (n) => {
       // Prefer the valve's clean friendly name; fall back to the scheduler
       // entity name with the device prefix + " Minutes" suffix stripped.
@@ -145,6 +154,49 @@ class RainbirdSchedulerStrategy extends HTMLElement {
 **Next window:** {{ states('${nextWindowEntity}') }} ({{ states('${totalMinEntity}') }} min)
 **Upcoming:** {{ states('${upcomingEntity}') }}`,
     };
+
+    // ---- Status strip (restored from v1.0): rain sensor, rain delay,
+    // schedule enabled, skip-next. Built as colored markdown spans (built-in
+    // glance/entities can't do per-state custom colors). All low-frequency
+    // entities, so safe in a template card. Uses HA theme color vars.
+    const statusParts = [];
+    if (rainSensorEntity) {
+      statusParts.push(
+        `{% set rain = is_state('${rainSensorEntity}', 'on') %}` +
+          `<span style="color: var(--{{ 'info-color' if rain else 'disabled-text-color' }})">` +
+          `🌧️ {{ 'Rain detected' if rain else 'No rain' }}</span>`
+      );
+    }
+    const delayExprs = [];
+    if (controllerDelayEntity)
+      delayExprs.push(`states('${controllerDelayEntity}') | int(0)`);
+    if (rainDelayEntity) delayExprs.push(`states('${rainDelayEntity}') | int(0)`);
+    if (delayExprs.length) {
+      const delayExpr =
+        delayExprs.length > 1 ? `[${delayExprs.join(", ")}] | max` : delayExprs[0];
+      statusParts.push(
+        `{% set delay = ${delayExpr} %}` +
+          `<span style="color: var(--{{ 'warning-color' if delay > 0 else 'disabled-text-color' }})">` +
+          `⏳ Delay {{ delay }}d</span>`
+      );
+    }
+    if (scheduleEnabledEntity) {
+      statusParts.push(
+        `{% set en = is_state('${scheduleEnabledEntity}', 'on') %}` +
+          `<span style="color: var(--{{ 'success-color' if en else 'disabled-text-color' }})">` +
+          `📅 Schedule {{ 'on' if en else 'off' }}</span>`
+      );
+    }
+    if (skipNextEntity) {
+      statusParts.push(
+        `{% set skip = is_state('${skipNextEntity}', 'on') %}` +
+          `<span style="color: var(--{{ 'warning-color' if skip else 'disabled-text-color' }})">` +
+          `⏭️ Skip next {{ 'on' if skip else 'off' }}</span>`
+      );
+    }
+    const statusCard = statusParts.length
+      ? { type: "markdown", content: statusParts.join(" &nbsp;·&nbsp; ") }
+      : null;
 
     // ---- Settings card
     const settingsRows = [
@@ -435,6 +487,7 @@ class RainbirdSchedulerStrategy extends HTMLElement {
       type: "grid",
       cards: [
         headerCard,
+        statusCard,
         settingsCard,
         weekdaysCard,
         calendarCard,

@@ -7,6 +7,16 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.10] — 2026-05-27
+
+### Added
+- **Status strip restored from v1.0** — a row of indicators under the header
+  showing rain sensor (🌧️), effective rain delay (⏳, the max of the
+  controller's and the scheduler's delay), schedule enabled (📅), and skip-next
+  (⏭️), each colored by state via HA theme vars. The rain sensor and controller
+  delay are pulled from the rainbird integration; schedule-enabled / skip-next
+  from the scheduler.
+
 ## [0.1.9] — 2026-05-27
 
 ### Added
