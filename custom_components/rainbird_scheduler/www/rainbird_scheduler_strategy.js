@@ -258,35 +258,43 @@ class RainbirdSchedulerStrategy extends HTMLElement {
         }
       : null;
 
-    // ---- Schedule calendar (markdown month grid, ported from the v1.0 YAML
-    // dashboard). Highlights upcoming run days with 💧 and today as [n].
-    // Driven off the integration's own `upcoming_runs` sensor `dates`
-    // attribute (a list of YYYY-MM-DD strings) rather than re-deriving the
-    // odd/even/day-of-week math, so it always matches what the scheduler will
-    // actually do. Hand-rolled HTML table because the built-in `calendar` card
-    // hangs on some setups. now() makes this re-render ~once/minute, which is
-    // fine — it's not a high-frequency entity template.
+    // ---- Schedule calendar — three stacked month grids: last / this / next
+    // month. A reusable Jinja macro renders one month, called for the previous,
+    // current, and next month. Run days are marked 💧 and today as [n].
+    //
+    // Two data sources, both YYYY-MM-DD strings from the `upcoming_runs`
+    // sensor, so the template never re-derives any odd/even/every-Nth math:
+    //   - `past_runs` — days the schedule ACTUALLY ran (recorded history),
+    //     so the past portion reflects reality (rain-skipped days stay blank).
+    //   - `dates`     — upcoming scheduled-eligible days (today → end of next
+    //     month), so the future portion matches what the scheduler will do.
+    // The union covers every cell; membership alone decides the 💧.
+    //
+    // Hand-rolled HTML table because the built-in `calendar` card hangs on some
+    // setups. now() makes this re-render ~once/minute — low-frequency, safe.
     const calendarCard = upcomingEntity
       ? {
           type: "markdown",
           title: "Schedule Calendar",
           content: [
             `{% set today = now() %}`,
-            `{% set first = today.replace(day=1) %}`,
+            `{% set runs = (state_attr('${upcomingEntity}', 'past_runs') or []) + (state_attr('${upcomingEntity}', 'dates') or []) %}`,
+            // month_grid(y, m): render one month as a labeled HTML table.
+            `{% macro month_grid(y, m) %}`,
+            `{% set first = today.replace(year=y, month=m, day=1) %}`,
             `{% set first_col = (first.weekday() + 1) % 7 %}`,
             `{% set last_day = (first + timedelta(days=32)).replace(day=1) - timedelta(days=1) %}`,
             `{% set dim = last_day.day %}`,
-            `{% set runs = state_attr('${upcomingEntity}', 'dates') or [] %}`,
-            `### {{ today.strftime('%B %Y') }} · upcoming runs`,
+            `#### {{ first.strftime('%B %Y') }}`,
             ``,
             `<table style="width:100%;text-align:center;border-collapse:separate;border-spacing:6px 6px;font-size:14px;table-layout:fixed">`,
             `<tr><th style="opacity:0.6">S</th><th style="opacity:0.6">M</th><th style="opacity:0.6">T</th><th style="opacity:0.6">W</th><th style="opacity:0.6">T</th><th style="opacity:0.6">F</th><th style="opacity:0.6">S</th></tr>`,
             `<tr>`,
             `{%- for _ in range(first_col) %}<td></td>{%- endfor %}`,
             `{%- for d in range(1, dim + 1) -%}`,
-            `{%- set daystr = '%04d-%02d-%02d' | format(first.year, first.month, d) -%}`,
+            `{%- set daystr = '%04d-%02d-%02d' | format(y, m, d) -%}`,
             `{%- set is_run = daystr in runs -%}`,
-            `{%- set is_today = d == today.day -%}`,
+            `{%- set is_today = (y == today.year and m == today.month and d == today.day) -%}`,
             `{%- if is_run and is_today -%}<td><strong>[{{ d }}]</strong>💧</td>`,
             `{%- elif is_run -%}<td>{{ d }}💧</td>`,
             `{%- elif is_today -%}<td><strong>[{{ d }}]</strong></td>`,
@@ -299,6 +307,16 @@ class RainbirdSchedulerStrategy extends HTMLElement {
             `{%- for _ in range(pad) %}<td></td>{%- endfor %}`,
             `</tr>`,
             `</table>`,
+            `{% endmacro %}`,
+            // Previous / current / next month indices (handle year wrap).
+            `{% set cy = today.year %}{% set cm = today.month %}`,
+            `{% set py = cy - 1 if cm == 1 else cy %}{% set pm = 12 if cm == 1 else cm - 1 %}`,
+            `{% set ny = cy + 1 if cm == 12 else cy %}{% set nm = 1 if cm == 12 else cm + 1 %}`,
+            `{{ month_grid(py, pm) }}`,
+            `{{ month_grid(cy, cm) }}`,
+            `{{ month_grid(ny, nm) }}`,
+            ``,
+            `<span style="opacity:0.6">💧 ran / scheduled · [n] today</span>`,
             ``,
             `**Next:** {{ strptime(states('${upcomingEntity}'), '%Y-%m-%d').strftime('%a, %b %-d') if states('${upcomingEntity}') not in ['unknown', 'unavailable', 'none'] else '—' }}`,
           ].join("\n"),

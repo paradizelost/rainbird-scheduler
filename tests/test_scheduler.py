@@ -35,6 +35,7 @@ from custom_components.rainbird_scheduler.scheduler import (
     next_fire_datetime,
     next_run_date,
     runs_in_next_30_days,
+    runs_in_range,
 )
 
 
@@ -306,3 +307,33 @@ class TestRunsPerMonth:
         # Start on May 1: next 30 days = May 1 through May 30.
         # Even days in [1, 30] = 2, 4, 6, ..., 30 = 15 days.
         assert runs_in_next_30_days(date(2026, 5, 1), cfg) == 15
+
+
+class TestRunsInRange:
+    def test_inclusive_bounds(self):
+        cfg = ScheduleConfig(day_class=DAY_CLASS_EVEN, every_nth=1)
+        runs = runs_in_range(date(2026, 5, 1), date(2026, 5, 31), cfg)
+        # Even days in May 2026 = 2, 4, ..., 30 = 15 days.
+        assert runs[0] == date(2026, 5, 2)
+        assert runs[-1] == date(2026, 5, 30)
+        assert len(runs) == 15
+
+    def test_single_day_range(self):
+        cfg = ScheduleConfig(day_class=DAY_CLASS_EVEN, every_nth=1)
+        assert runs_in_range(date(2026, 5, 2), date(2026, 5, 2), cfg) == [date(2026, 5, 2)]
+        assert runs_in_range(date(2026, 5, 3), date(2026, 5, 3), cfg) == []
+
+    def test_end_before_start_is_empty(self):
+        cfg = ScheduleConfig(day_class=DAY_CLASS_EVEN, every_nth=1)
+        assert runs_in_range(date(2026, 5, 10), date(2026, 5, 1), cfg) == []
+
+    def test_works_for_past_dates(self):
+        # Even/odd math is anchorless, so a past month resolves the same way
+        # the dashboard's future view does — used for the prev-month grid's
+        # fallback math (actual runs come from recorded history at runtime).
+        cfg = ScheduleConfig(day_class=DAY_CLASS_ODD, every_nth=1)
+        runs = runs_in_range(date(2026, 4, 1), date(2026, 4, 30), cfg)
+        # Odd days in April 2026 = 1, 3, ..., 29 = 15 days.
+        assert runs[0] == date(2026, 4, 1)
+        assert runs[-1] == date(2026, 4, 29)
+        assert len(runs) == 15

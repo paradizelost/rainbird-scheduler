@@ -135,6 +135,22 @@ def upcoming_runs(start: date, config: ScheduleConfig, horizon_days: int = 60) -
     ]
 
 
+def runs_in_range(start: date, end: date, config: ScheduleConfig) -> list[date]:
+    """Return eligible dates (window-only) in the inclusive range [start, end].
+
+    Works backward and forward — `is_eligible` is pure, so this is also valid
+    for past dates (used by the dashboard calendar to fill the future portion
+    of the previous/current/next-month view). `end < start` yields []."""
+    if end < start:
+        return []
+    span = (end - start).days
+    return [
+        start + timedelta(days=offset)
+        for offset in range(span + 1)
+        if is_eligible(start + timedelta(days=offset), config)
+    ]
+
+
 def next_run_date(start: date, config: ScheduleConfig, horizon_days: int = 60) -> date | None:
     """Return the next eligible date >= `start`, or None within horizon."""
     runs = upcoming_runs(start, config, horizon_days)

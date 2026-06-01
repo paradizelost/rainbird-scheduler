@@ -58,6 +58,10 @@ STORE_KEY_PREFIX = f"{DOMAIN}.state"
 # coordinator's explicit time listener, NOT by polling cadence.
 UPDATE_INTERVAL = timedelta(minutes=5)
 
+# How many days of actual-run history to retain for the dashboard calendar's
+# past-month view. ~3 months covers prev/current/next month with margin.
+RUN_HISTORY_DAYS = 95
+
 
 @dataclass
 class CoordinatorState:
@@ -87,6 +91,9 @@ class CoordinatorState:
     zone_minutes: dict[int, int] = field(default_factory=dict)
     zone_gpm: dict[int, float] = field(default_factory=dict)
     zone_last_run: dict[int, datetime | None] = field(default_factory=dict)
+    # Rolling list of dates the full schedule actually ran (for the dashboard
+    # calendar's past-month view). Pruned to RUN_HISTORY_DAYS.
+    recent_run_dates: list[date] = field(default_factory=list)
 
     def schedule_config(self, wet: bool) -> ScheduleConfig:
         """Build a ScheduleConfig snapshot for verdict computation."""
@@ -123,6 +130,7 @@ def _serialize(state: CoordinatorState) -> dict[str, Any]:
             str(k): v.isoformat() if v else None
             for k, v in state.zone_last_run.items()
         },
+        "recent_run_dates": [d.isoformat() for d in state.recent_run_dates],
     }
 
 
@@ -153,6 +161,9 @@ def _deserialize(raw: dict[str, Any]) -> CoordinatorState:
         int(k): datetime.fromisoformat(v) if v else None
         for k, v in raw.get("zone_last_run", {}).items()
     }
+    state.recent_run_dates = [
+        date.fromisoformat(s) for s in raw.get("recent_run_dates", [])
+    ]
     return state
 
 
@@ -393,6 +404,15 @@ class RainBirdSchedulerCoordinator(DataUpdateCoordinator[None]):
     async def async_set_last_run(self, when: datetime, gallons: float) -> None:
         self.state.last_run_at = when
         self.state.last_run_gallons = float(gallons)
+        await self._async_after_mutation()
+
+    async def async_record_run(self, day: date) -> None:
+        """Record that the full schedule ran on `day` (for the calendar's
+        past-month view). Dedupes and prunes to RUN_HISTORY_DAYS."""
+        cutoff = dt_util.now().date() - timedelta(days=RUN_HISTORY_DAYS)
+        dates = {d for d in self.state.recent_run_dates if d >= cutoff}
+        dates.add(day)
+        self.state.recent_run_dates = sorted(dates)
         await self._async_after_mutation()
 
     # -------------------------------------------------- scheduled-run listener

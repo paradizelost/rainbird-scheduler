@@ -7,6 +7,27 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.18] — 2026-06-01
+
+### Changed
+- **Schedule Calendar now spans last / this / next month** instead of just the
+  current month. A reusable Jinja macro renders one month grid and is called for
+  the previous, current, and next month, so run days surrounding a month
+  boundary are always visible.
+
+### Added
+- **Past-month runs reflect what actually happened.** The integration now
+  persists a rolling list of dates the full schedule actually ran
+  (`recent_run_dates`, pruned to ~95 days), recorded whenever a full cycle
+  starts (scheduled or manual). The calendar marks past days from this history —
+  so a day skipped for rain stays blank — while future days still come from the
+  scheduled-eligibility math. Exposed as the `past_runs` attribute on the
+  Upcoming Runs sensor; the `dates` attribute now covers today through the end
+  of next month. History is empty for dates before this version shipped and
+  fills in going forward.
+- `scheduler.runs_in_range(start, end, config)` — pure helper returning eligible
+  days in an inclusive date range (unit-tested).
+
 ## [0.1.17] — 2026-05-27
 
 ### Changed

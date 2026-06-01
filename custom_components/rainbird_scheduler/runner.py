@@ -240,6 +240,9 @@ async def async_start_full_cycle(coordinator: "RainBirdSchedulerCoordinator") ->
 
 async def _full_cycle_task(coordinator: "RainBirdSchedulerCoordinator") -> None:
     start_gal = coordinator._flume_daily()
+    # Record the run date up front so a full cycle that's cancelled mid-way
+    # (partial watering) still shows on the calendar as a day that ran.
+    await coordinator.async_record_run(dt_util.now().date())
     try:
         cycles = max(1, coordinator.state.cycles_per_run)
         for _cycle in range(cycles):

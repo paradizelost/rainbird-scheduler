@@ -15,7 +15,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -26,7 +26,7 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN
 from .coordinator import RainBirdSchedulerCoordinator
 from .entity import RainBirdSchedulerEntity
-from .scheduler import upcoming_runs
+from .scheduler import runs_in_range, upcoming_runs
 
 
 async def async_setup_entry(
@@ -156,8 +156,15 @@ class MonthlyEstimatedGallonsSensor(RainBirdSchedulerEntity, SensorEntity):
 
 
 class UpcomingRunsSensor(RainBirdSchedulerEntity, SensorEntity):
-    """State is the next eligible date as ISO. Attribute `dates` has the full
-    60-day list."""
+    """State is the next eligible date as ISO.
+
+    Attributes feed the dashboard's prev/current/next-month calendar:
+      - `dates`     — upcoming scheduled-eligible days, from today through the
+                      end of next month (so the future portion of all three
+                      grids is fully covered).
+      - `past_runs` — days the full schedule actually ran (recorded history),
+                      used to mark the last-month / earlier-this-month grid.
+    """
 
     _attr_icon = "mdi:calendar-month"
 
@@ -172,8 +179,17 @@ class UpcomingRunsSensor(RainBirdSchedulerEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, list[str]]:
         config = self.coordinator.state.schedule_config(wet=False)
-        dates = upcoming_runs(dt_util.now().date(), config, horizon_days=60)
-        return {"dates": [d.isoformat() for d in dates]}
+        today = dt_util.now().date()
+        # Last day of next month: jump two months forward, take the 1st, back up.
+        month_after_next = today.month + 2
+        y = today.year + (month_after_next - 1) // 12
+        m = (month_after_next - 1) % 12 + 1
+        end_next_month = date(y, m, 1) - timedelta(days=1)
+        dates = runs_in_range(today, end_next_month, config)
+        return {
+            "dates": [d.isoformat() for d in dates],
+            "past_runs": [d.isoformat() for d in self.coordinator.state.recent_run_dates],
+        }
 
 
 class ActivityLogSensor(RainBirdSchedulerEntity, SensorEntity):
