@@ -7,6 +7,17 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.19] — 2026-06-01
+
+### Fixed
+- **"Skip Next Run" is now truly one-shot.** Previously the toggle stayed on
+  after firing, so it skipped *every* scheduled run until manually cleared —
+  contradicting its name. It now auto-clears the first time it actually blocks
+  an eligible run (verdict `SKIP_MANUAL`), so the schedule resumes on the next
+  eligible day. Flipping it on a non-eligible day no longer wastes the skip —
+  it's preserved until the next day the schedule would actually water. An
+  activity-log note records when the toggle auto-clears.
+
 ## [0.1.18] — 2026-06-01
 
 ### Changed

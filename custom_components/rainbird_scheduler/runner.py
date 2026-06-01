@@ -107,6 +107,18 @@ async def async_log_scheduled_verdict(
     await _log(coordinator, "Rainbird", msg)
 
 
+async def async_log_skip_consumed(
+    coordinator: "RainBirdSchedulerCoordinator",
+) -> None:
+    """Note that the one-shot 'Skip Next Run' toggle was auto-cleared after it
+    skipped an otherwise-eligible run, so the schedule resumes next time."""
+    await _log(
+        coordinator,
+        "Rainbird",
+        'Skip Next Run consumed — toggle cleared; schedule resumes next eligible day',
+    )
+
+
 # ----------------------------------------------------------------- run a zone
 
 

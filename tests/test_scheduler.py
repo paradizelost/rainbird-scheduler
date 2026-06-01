@@ -309,6 +309,33 @@ class TestRunsPerMonth:
         assert runs_in_next_30_days(date(2026, 5, 1), cfg) == 15
 
 
+class TestSkipNextConsumption:
+    """The coordinator clears 'Skip Next Run' only when the scheduled-run
+    verdict is SKIP_MANUAL — i.e. the day was genuinely eligible and the skip
+    is what blocked it. These tests pin the verdict precedence that makes that
+    one-shot behavior correct (consume on the next eligible day; preserve the
+    skip on a non-eligible day)."""
+
+    def test_skip_on_eligible_day_is_manual(self):
+        # Even schedule, May 2 is even → eligible. Skip should win → SKIP_MANUAL,
+        # which is the coordinator's signal to consume the toggle.
+        cfg = ScheduleConfig(day_class=DAY_CLASS_EVEN, every_nth=1, skip_next=True)
+        assert compute_verdict(date(2026, 5, 2), cfg) == VERDICT_SKIP_MANUAL
+
+    def test_skip_on_noneligible_day_is_window(self):
+        # May 3 is odd → not eligible. Window gate fires before the skip gate,
+        # so verdict is SKIP_WINDOW and the skip is NOT consumed.
+        cfg = ScheduleConfig(day_class=DAY_CLASS_EVEN, every_nth=1, skip_next=True)
+        assert compute_verdict(date(2026, 5, 3), cfg) == VERDICT_SKIP_WINDOW
+
+    def test_skip_outranks_rain_on_eligible_day(self):
+        # Eligible + wet + skip: skip gate sits above rain, so SKIP_MANUAL.
+        cfg = ScheduleConfig(
+            day_class=DAY_CLASS_EVEN, every_nth=1, skip_next=True, wet=True
+        )
+        assert compute_verdict(date(2026, 5, 2), cfg) == VERDICT_SKIP_MANUAL
+
+
 class TestRunsInRange:
     def test_inclusive_bounds(self):
         cfg = ScheduleConfig(day_class=DAY_CLASS_EVEN, every_nth=1)

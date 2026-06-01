@@ -35,6 +35,7 @@ from .const import (
     DOMAIN,
     MAX_ZONES,
     RAINBIRD_DOMAIN,
+    VERDICT_SKIP_MANUAL,
     VERDICT_YES,
 )
 from .scheduler import (
@@ -449,11 +450,25 @@ class RainBirdSchedulerCoordinator(DataUpdateCoordinator[None]):
 
         # Runner module owns logbook.log + running the full cycle.
         # Imported lazily to avoid circular imports.
-        from .runner import async_log_scheduled_verdict, async_start_full_cycle
+        from .runner import (
+            async_log_scheduled_verdict,
+            async_log_skip_consumed,
+            async_start_full_cycle,
+        )
 
         await async_log_scheduled_verdict(self, verdict)
         if verdict == VERDICT_YES:
             await async_start_full_cycle(self)
+        elif verdict == VERDICT_SKIP_MANUAL:
+            # One-shot semantics: a SKIP_MANUAL verdict means today was an
+            # eligible run day (enabled + in window — the skip gate sits above
+            # rain/delay) and the "Skip Next Run" toggle is what blocked it. So
+            # the skip has done its job — clear it so the schedule resumes on
+            # the next eligible day rather than holding indefinitely. Skipping
+            # on a non-eligible day never reaches this branch, so the skip is
+            # preserved until it actually consumes a run.
+            await self.async_set_skip_next(False)
+            await async_log_skip_consumed(self)
 
     # ---------------------------------------------------------------- update
 
