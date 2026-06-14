@@ -7,6 +7,17 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.21] — 2026-06-14
+
+### Fixed
+- **Strategy JS now cache-busts on every update.** The dashboard strategy was
+  served from a fixed URL with no version, so the browser / HA PWA service
+  worker kept serving a stale copy after an update — new features (like the
+  0.1.20 calendar skip indicators) wouldn't appear without manually clearing
+  site data. The registered URL now carries `?v=<version>`, so each release is a
+  fresh URL that bypasses those caches. (Takes effect after one HA restart on
+  the version that includes this fix.)
+
 ## [0.1.20] — 2026-06-14
 
 ### Added
