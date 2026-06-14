@@ -279,6 +279,16 @@ class RainbirdSchedulerStrategy extends HTMLElement {
           content: [
             `{% set today = now() %}`,
             `{% set runs = (state_attr('${upcomingEntity}', 'past_runs') or []) + (state_attr('${upcomingEntity}', 'dates') or []) %}`,
+            // Skip indicators: rain delay marks the next N days as paused; the
+            // skip-next toggle marks the single next eligible run. Both render as
+            // 🚫 + a tinted cell so it's obvious the schedule won't run.
+            rainDelayEntity
+              ? `{% set rdays = states('${rainDelayEntity}') | int(0) %}`
+              : `{% set rdays = 0 %}`,
+            skipNextEntity
+              ? `{% set skip_next_on = is_state('${skipNextEntity}', 'on') %}`
+              : `{% set skip_next_on = false %}`,
+            `{% set next_run = states('${upcomingEntity}') %}`,
             // month_grid(y, m): render one month as a labeled HTML table.
             `{% macro month_grid(y, m) %}`,
             `{% set first = today.replace(year=y, month=m, day=1) %}`,
@@ -292,13 +302,16 @@ class RainbirdSchedulerStrategy extends HTMLElement {
             `<tr>`,
             `{%- for _ in range(first_col) %}<td></td>{%- endfor %}`,
             `{%- for d in range(1, dim + 1) -%}`,
+            `{%- set cell = first.replace(day=d) -%}`,
             `{%- set daystr = '%04d-%02d-%02d' | format(y, m, d) -%}`,
+            `{%- set offset = (cell.date() - today.date()).days -%}`,
             `{%- set is_run = daystr in runs -%}`,
             `{%- set is_today = (y == today.year and m == today.month and d == today.day) -%}`,
-            `{%- if is_run and is_today -%}<td><strong>[{{ d }}]</strong>💧</td>`,
-            `{%- elif is_run -%}<td>{{ d }}💧</td>`,
-            `{%- elif is_today -%}<td><strong>[{{ d }}]</strong></td>`,
-            `{%- else -%}<td>{{ d }}</td>{%- endif -%}`,
+            `{%- set skipped = (offset >= 0 and offset < rdays) or (skip_next_on and daystr == next_run) -%}`,
+            `{%- set inner = ('<strong>[' ~ d ~ ']</strong>') if is_today else (d | string) -%}`,
+            `{%- set marker = '🚫' if (skipped and is_run) else ('💧' if is_run else '') -%}`,
+            `{%- set bg = ' style="background:rgba(244,67,54,0.18);border-radius:6px"' if skipped else '' -%}`,
+            `<td{{ bg }}>{{ inner }}{{ marker }}</td>`,
             `{%- set col = (first_col + d) % 7 -%}`,
             `{%- if col == 0 and d != dim %}</tr><tr>{%- endif -%}`,
             `{%- endfor %}`,
@@ -316,7 +329,10 @@ class RainbirdSchedulerStrategy extends HTMLElement {
             `{{ month_grid(cy, cm) }}`,
             `{{ month_grid(ny, nm) }}`,
             ``,
-            `<span style="opacity:0.6">💧 ran / scheduled · [n] today</span>`,
+            `{% if rdays > 0 %}<div style="color:var(--error-color)">🚫 Rain delay: {{ rdays }} day{{ 's' if rdays != 1 else '' }} skipped — no runs through {{ (today + timedelta(days=rdays - 1)).strftime('%a, %b ') }}{{ (today + timedelta(days=rdays - 1)).day }}</div>{% endif %}`,
+            `{% if skip_next_on %}<div style="color:var(--warning-color)">🚫 Next scheduled run will be skipped</div>{% endif %}`,
+            ``,
+            `<span style="opacity:0.6">💧 ran / scheduled · 🚫 skipped · [n] today</span>`,
             ``,
             `**Next:** {{ strptime(states('${upcomingEntity}'), '%Y-%m-%d').strftime('%a, %b %-d') if states('${upcomingEntity}') not in ['unknown', 'unavailable', 'none'] else '—' }}`,
           ].join("\n"),

@@ -7,6 +7,17 @@ Versioning follows [SemVer](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.20] — 2026-06-14
+
+### Added
+- **Calendar skip indicators.** The Schedule Calendar now shows which upcoming
+  days won't run: an active rain delay tints the next N days and crosses out any
+  scheduled run in that window with 🚫, and the "Skip Next Run" toggle marks the
+  next eligible run the same way. A summary line under the grid spells out the
+  count, e.g. "🚫 Rain delay: 3 days skipped — no runs through Tue, Jun 16" and
+  "🚫 Next scheduled run will be skipped". Driven off the existing `rain_delay`
+  number and `skip_next` switch — no new entities.
+
 ## [0.1.19] — 2026-06-01
 
 ### Fixed
