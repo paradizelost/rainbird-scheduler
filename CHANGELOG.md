@@ -1,3 +1,7 @@
+## v0.1.22
+
+- Dashboard section order: Settings (Master Settings) now above Zones, with the Activity log immediately below Settings (was: Zones before Activity/Settings).
+
 # Changelog
 
 All notable changes to this project will be documented in this file.

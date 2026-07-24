@@ -554,11 +554,11 @@ class RainbirdSchedulerStrategy extends HTMLElement {
       return filtered.length ? { type: "grid", title, cards: filtered } : null;
     };
 
+    // Order per Dan 2026-07-25: Master Settings (the Settings section) above
+    // the Zones, with the Activity log immediately below Master Settings.
     const sections = [
       section("Status", [headerCard, statusCard, tiles, actionsCard]),
       section("Calendar & Tomorrow", [calendarCard, decisionCard]),
-      section("Zones", [...zoneCards]),
-      section("Activity", [activityCard]),
       section("Settings", [
         settingsCard,
         weekdaysCard,
@@ -566,6 +566,8 @@ class RainbirdSchedulerStrategy extends HTMLElement {
         editDurationsCard,
         editGpmCard,
       ]),
+      section("Activity", [activityCard]),
+      section("Zones", [...zoneCards]),
     ].filter(Boolean);
 
     return {

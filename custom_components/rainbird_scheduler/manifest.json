@@ -1,13 +1,19 @@
 {
   "domain": "rainbird_scheduler",
   "name": "Rain Bird Scheduler",
-  "codeowners": ["@paradizelost"],
+  "codeowners": [
+    "@paradizelost"
+  ],
   "config_flow": true,
-  "dependencies": ["frontend", "http", "rainbird"],
+  "dependencies": [
+    "frontend",
+    "http",
+    "rainbird"
+  ],
   "documentation": "https://git.hamik.net/claude-bot/rainbird-scheduler",
   "integration_type": "service",
   "iot_class": "local_polling",
   "issue_tracker": "https://git.hamik.net/claude-bot/rainbird-scheduler/issues",
   "requirements": [],
-  "version": "0.1.21"
+  "version": "0.1.22"
 }
